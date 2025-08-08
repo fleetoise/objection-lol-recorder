@@ -41,7 +41,10 @@ jobs:
           fi
         shell: bash
 
-      - name: Build Windows app
+      - name: Build Vite output
+        run: npm run package
+
+      - name: Package Windows app
         run: npm run make
 
       - name: Upload Windows artifacts
@@ -81,7 +84,7 @@ jobs:
         shell: bash
 
       - name: Build Vite output
-        run: npm run package   # or your actual vite build command
+        run: npm run package
 
       - name: Build Linux AppImage (electron-builder)
         run: npx electron-builder --linux AppImage --x64 --publish never
@@ -91,3 +94,36 @@ jobs:
         with:
           name: linux-artifacts
           path: dist/*.AppImage
+
+  release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir release
+          # Windows ZIP
+          cd artifacts/windows-artifacts
+          zip -r ../../release/objection-lol-recorder-v${{ github.event.inputs.version }}-windows.zip .
+          cd ../../
+          # Linux AppImage
+          cp artifacts/linux-artifacts/*.AppImage release/objection-lol-recorder-v${{ github.event.inputs.version }}.AppImage
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          name: Release v${{ github.event.inputs.version }}
+          draft: true
+          prerelease: ${{ github.event.inputs.prerelease }}
+          files: release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
