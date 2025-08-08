@@ -1,5 +1,3 @@
-see https://github.com/fleetoise/objection-lol-recorder/tree/linux-support
-
 # Objection.lol Recorder
 
 A desktop application for recording videos from [objection.lol](https://objection.lol). This tool allows you to create recordings of your scene projects.
