@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import { finalizeRecording, startRecording, stopRecording } from './recording';
 import { loadSettings } from './settings-store';
 import { audioTrimDuration, getRecordingUrl } from './utils';
+import { stopNodeRecording } from './linux';
 
 let recordWindow;
 let view;
@@ -113,37 +114,53 @@ export const createObjectionView = async (mainWindow, objectionId, params = {}) 
         console.error(error.message || 'Error during recording setup');
       }
     } else if (message === 'DONE') {
-      stopRecordingTimeout = setTimeout(
-        async () => {
-          try {
-            const temporaryFilePath = await stopRecording();
+      if (!process.env.WAYLAND_DISPLAY.includes("wayland")) {
+        stopRecordingTimeout = setTimeout(
+          async () => {
+            try {
+              const temporaryFilePath = await stopRecording();
 
-            cleanupObjectionView();
+              cleanupObjectionView();
 
-            if (temporaryFilePath) {
-              // Add progress callback
-              await finalizeRecording(
-                temporaryFilePath,
-                (progress) => {
-                  if (mainWindow && !mainWindow.isDestroyed()) {
-                    mainWindow.webContents.send('conversion-progress', progress);
-                  }
-                },
-                audioTrimDuration
-              );
+              if (temporaryFilePath) {
+                // Add progress callback
+                await finalizeRecording(
+                  temporaryFilePath,
+                  (progress) => {
+                    if (mainWindow && !mainWindow.isDestroyed()) {
+                      mainWindow.webContents.send('conversion-progress', progress);
+                    }
+                  },
+                  audioTrimDuration
+                );
+              }
+
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('recording-finished');
+              }
+            } catch (err) {
+              console.error('Error stopping recording:', err);
+            } finally {
+              cleanupObjectionView();
             }
+          },
+          (recordingParams.appendSeconds + audioTrimDuration + 0.1) * 1000
+        );
 
-            if (mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.webContents.send('recording-finished');
-            }
-          } catch (err) {
-            console.error('Error stopping recording:', err);
-          } finally {
-            cleanupObjectionView();
+      } else {
+        try {
+          await new Promise(r => setTimeout(r, 2000));
+          await stopNodeRecording();
+          cleanupObjectionView();
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('recording-finished');
           }
-        },
-        (recordingParams.appendSeconds + audioTrimDuration + 0.1) * 1000
-      );
+        } catch (err) {
+          console.error('Error stopping recording', err)
+        } finally {
+          cleanupObjectionView();
+        }
+      }
     }
   });
 
