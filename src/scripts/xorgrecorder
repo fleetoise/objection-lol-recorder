@@ -11,7 +11,7 @@ CROP_H="$3"
 TMP="$4"
 FPS="$5/1"
 
-echo "WINDOW_ID='$WINDOW_ID' (len=${#WINDOW_ID})" >> /tmp/xorgrecorder.log
+echo "WINDOW_ID='$WINDOW_ID' (len=${#WINDOW_ID})" >> "$HOME/Documents/window_id.log"
 
 for cmd in gst-launch-1.0 pactl ffmpeg; do
   if ! command -v "$cmd" &> /dev/null; then
