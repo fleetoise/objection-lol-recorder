@@ -30,8 +30,12 @@ gst-launch-1.0 -q -e \
   pulsesrc device="$MONITOR_SRC" do-timestamp=true ! \
     audio/x-raw,format=S16LE,channels=2,rate=48000 ! \
     audioconvert ! audioresample ! opusenc ! queue ! mux. \
-  matroskamux name=mux ! filesink location="$TMP"
+  matroskamux name=mux ! filesink location="$TMP" &
 
+GST_PID=$!
+
+trap "kill -SIGINT '$GST_PID'" SIGINT
+wait "$GST_PID"
 
 CFR_TMP="/tmp/video_cfr.mp4"
 ffmpeg -y -i "$TMP" \
